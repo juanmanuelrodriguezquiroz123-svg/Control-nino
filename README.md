@@ -26,7 +26,7 @@
         const db = firebase.database();
 
         db.ref('bloqueo').on('value', (snap) => {
-            // Si el comando es "SI", se bloquea. Si es "NO", se quita el bloqueo.
+            // SI el comando es "SI", bloquea. Si es "NO" (o cualquier otra cosa), desbloquea.
             if (snap.val() === "SI") {
                 document.getElementById('bloqueo').style.display = "flex";
             } else {
